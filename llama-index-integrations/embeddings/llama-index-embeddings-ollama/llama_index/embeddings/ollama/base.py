@@ -8,6 +8,7 @@ from llama_index.core.constants import DEFAULT_EMBED_BATCH_SIZE
 
 from ollama import Client, AsyncClient
 
+from httpx import AsyncHTTPTransport, HTTPTransport
 
 class OllamaEmbedding(BaseEmbedding):
     """Class for Ollama embeddings."""
@@ -23,6 +24,10 @@ class OllamaEmbedding(BaseEmbedding):
     ollama_additional_kwargs: Dict[str, Any] = Field(
         default_factory=dict, description="Additional kwargs for the Ollama API."
     )
+    httpx_transport_args: Optional[Dict[str, Any]] = Field(
+        default={},
+        description="Arguments to the httpx HTTPTransport.",
+    )
 
     _client: Client = PrivateAttr()
     _async_client: AsyncClient = PrivateAttr()
@@ -34,6 +39,7 @@ class OllamaEmbedding(BaseEmbedding):
         embed_batch_size: int = DEFAULT_EMBED_BATCH_SIZE,
         ollama_additional_kwargs: Optional[Dict[str, Any]] = None,
         callback_manager: Optional[CallbackManager] = None,
+        httpx_transport_args: Optional[Dict[str, Any]] = {},
         **kwargs: Any,
     ) -> None:
         super().__init__(
@@ -45,8 +51,14 @@ class OllamaEmbedding(BaseEmbedding):
             **kwargs,
         )
 
-        self._client = Client(host=self.base_url)
-        self._async_client = AsyncClient(host=self.base_url)
+        self._client = Client(
+            host=self.base_url,
+            transport=HTTPTransport(**httpx_transport_args),
+        )
+        self._async_client = AsyncClient(
+            host=self.base_url,
+            transport=AsyncHTTPTransport(**httpx_transport_args),
+        )
 
     @classmethod
     def class_name(cls) -> str:

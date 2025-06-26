@@ -24,6 +24,8 @@ from llama_index.core.base.llms.generic_utils import (
 )
 from llama_index.core.tools import ToolSelection
 
+from httpx import AsyncHTTPTransport, HTTPTransport
+
 if TYPE_CHECKING:
     from llama_index.core.tools.types import BaseTool
 
@@ -103,6 +105,10 @@ class Ollama(FunctionCallingLLM):
         default="5m",
         description="controls how long the model will stay loaded into memory following the request(default: 5m)",
     )
+    httpx_transport_args: Optional[Dict[str, Any]] = Field(
+        default={},
+        description="Arguments to the httpx HTTPTransport.",
+    )
 
     _client: Optional[Client] = PrivateAttr()
     _async_client: Optional[AsyncClient] = PrivateAttr()
@@ -121,6 +127,7 @@ class Ollama(FunctionCallingLLM):
         async_client: Optional[AsyncClient] = None,
         is_function_calling_model: bool = True,
         keep_alive: Optional[Union[float, str]] = None,
+        httpx_transport_args: Optional[Dict[str, Any]] = {},
         **kwargs: Any,
     ) -> None:
         super().__init__(
@@ -137,6 +144,7 @@ class Ollama(FunctionCallingLLM):
             **kwargs,
         )
 
+        self._httpx_transport_args = httpx_transport_args
         self._client = client
         self._async_client = async_client
 
@@ -159,14 +167,20 @@ class Ollama(FunctionCallingLLM):
     @property
     def client(self) -> Client:
         if self._client is None:
-            self._client = Client(host=self.base_url, timeout=self.request_timeout)
+            self._client = Client(
+                host=self.base_url,
+                timeout=self.request_timeout,
+                transport=HTTPTransport(**self._httpx_transport_args),
+            )
         return self._client
 
     @property
     def async_client(self) -> AsyncClient:
         if self._async_client is None:
             self._async_client = AsyncClient(
-                host=self.base_url, timeout=self.request_timeout
+                host=self.base_url,
+                timeout=self.request_timeout,
+                transport=AsyncHTTPTransport(**self._httpx_transport_args),
             )
         return self._async_client
 
